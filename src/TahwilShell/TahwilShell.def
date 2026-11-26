@@ -1,0 +1,4 @@
+LIBRARY TahwilShell
+EXPORTS
+    DllGetClassObject PRIVATE
+    DllCanUnloadNow PRIVATE

@@ -1,0 +1,99 @@
+<Window x:Class="Tahwil.UI.ProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:Tahwil.UI"
+        Style="{StaticResource WindowBase}"
+        Width="400" SizeToContent="Height" WindowStyle="None" ResizeMode="NoResize"
+        Topmost="True" ShowActivated="False" ShowInTaskbar="True" Title="Tahwil">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="0" GlassFrameThickness="0,0,0,1" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <ui:CategoryBrush x:Key="CatBrush" />
+        <ui:StateBrush x:Key="StateBrush" />
+    </Window.Resources>
+
+    <Border BorderBrush="{DynamicResource Stroke}" BorderThickness="1" Padding="18,16,18,14">
+        <StackPanel>
+            <!-- header -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border x:Name="Badge" Style="{StaticResource Badge}">
+                    <Grid>
+                        <TextBlock x:Name="BadgeText" Foreground="White" FontWeight="Bold" FontSize="11.5" FlowDirection="LeftToRight"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <TextBlock x:Name="BadgeIcon" Foreground="White" FontSize="20" Visibility="Collapsed"
+                                   FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="TitleText" FontSize="14.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="SubText" Style="{StaticResource SubText}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <Button Grid.Column="2" Style="{StaticResource IconBtn}" VerticalAlignment="Top" Click="OnClose">
+                    <TextBlock Text="&#xE8BB;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource Sub}" />
+                </Button>
+            </Grid>
+
+            <ProgressBar x:Name="Overall" Height="8" Margin="0,14,0,10" />
+
+            <Grid>
+                <TextBlock x:Name="CountText" Style="{StaticResource SubText}" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="DetailsBtn" Style="{StaticResource LinkBtn}" Click="OnToggleDetails" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="DetailsText" Foreground="{DynamicResource Accent}" FontSize="13" />
+                            <TextBlock x:Name="Chevron" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
+                                       Foreground="{DynamicResource Accent}" Margin="6,2,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- details -->
+            <ScrollViewer x:Name="Details" Visibility="Collapsed" MaxHeight="300" Margin="0,12,0,0" VerticalScrollBarVisibility="Auto">
+                <ItemsControl x:Name="JobList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource Card}" BorderBrush="{DynamicResource Stroke}" BorderThickness="1"
+                                    CornerRadius="10" Padding="10,8" Margin="0,0,0,6" ToolTip="{Binding Error}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="36" Height="36" CornerRadius="8" Background="{Binding Category.Id, Converter={StaticResource CatBrush}}">
+                                        <TextBlock Text="{Binding SourceExt}" Foreground="White" FontWeight="Bold" FontSize="10"
+                                                   FlowDirection="LeftToRight" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding FileName}" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="200" />
+                                            <TextBlock Style="{StaticResource SubText}" Margin="6,0,0,0" FontSize="12"
+                                                       Text="{Binding Target.Ext, StringFormat='→ .{0}'}" FlowDirection="LeftToRight" />
+                                        </StackPanel>
+                                        <ProgressBar Value="{Binding Progress, Mode=OneWay}" Height="4" Margin="0,6,0,0"
+                                                     Foreground="{Binding State, Converter={StaticResource StateBrush}}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="12" VerticalAlignment="Center" MinWidth="48"
+                                               Foreground="{Binding State, Converter={StaticResource StateBrush}, ConverterParameter=text}" TextAlignment="Right" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- done actions -->
+            <StackPanel x:Name="DoneActions" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0" Visibility="Collapsed">
+                <Button x:Name="CloseBtn" Style="{StaticResource Btn}" Click="OnClose" Margin="0,0,8,0" />
+                <Button x:Name="OpenBtn" Style="{StaticResource BtnPrimary}" Click="OnOpenFolder" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

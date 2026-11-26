@@ -1,0 +1,92 @@
+name: Build installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Cache engine downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: engines-ffmpeg-n8.1-lo-26.2.7
+
+      - name: Install build tools (zig, Inno Setup)
+        shell: pwsh
+        run: |
+          $t = "$env:RUNNER_TEMP\tools"
+          New-Item -ItemType Directory -Force $t | Out-Null
+          curl.exe -L --fail -s -o "$t\zig.zip" https://ziglang.org/download/0.17.1/zig-x86_64-windows-0.17.1.zip
+          Expand-Archive "$t\zig.zip" "$t\zig"
+          "ZIG=$((Get-ChildItem "$t\zig" -Recurse -Filter zig.exe | Select-Object -First 1).FullName)" >> $env:GITHUB_ENV
+          curl.exe -L --fail -s -o "$t\inno.exe" https://github.com/jrsoftware/issrc/releases/download/is-7_1_1/innosetup-7.1.1-x64.exe
+          Start-Process "$t\inno.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/CURRENTUSER','/NORESTART',"/DIR=$t\inno" -Wait
+          "ISCC=$t\inno\ISCC.exe" >> $env:GITHUB_ENV
+
+      - name: Signing key (for the Windows 11 menu package)
+        shell: pwsh
+        env:
+          PFX_B64: ${{ secrets.TAHWIL_PFX_B64 }}
+        run: |
+          $p = "$env:RUNNER_TEMP\sign.pfx"
+          [IO.File]::WriteAllBytes($p, [Convert]::FromBase64String($env:PFX_B64))
+          "TAHWIL_PFX=$p" >> $env:GITHUB_ENV
+
+      - name: Build
+        shell: pwsh
+        env:
+          TAHWIL_PFX_PW: ${{ secrets.TAHWIL_PFX_PW }}
+        run: ./build/build.ps1
+
+      - name: Read version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = ([xml](Get-Content src/Tahwil/Tahwil.csproj)).SelectSingleNode('//Version').InnerText
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Publish release (only the latest is kept)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v${{ steps.ver.outputs.version }}"
+          gh release list --limit 100 --json tagName --jq '.[].tagName' | while read t; do
+            gh release delete "$t" --cleanup-tag -y || true
+          done
+          gh release delete "$TAG" --cleanup-tag -y || true
+          gh release create "$TAG" build/out/Tahwil-Setup.exe \
+            --title "Tahwil ${{ steps.ver.outputs.version }}" \
+            --notes "Download **Tahwil-Setup.exe** and run it. Right-click any file → Convert to." \
+            --target "${{ github.sha }}"
+
+      - name: Delete old workflow runs (keep only the latest build)
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${{ github.repository }}/actions/runs?per_page=100" \
+            --jq '.workflow_runs[] | select(.status == "completed") | .id' |
+          while read id; do
+            [ "$id" = "${{ github.run_id }}" ] && continue
+            gh api -X DELETE "repos/${{ github.repository }}/actions/runs/$id" >/dev/null || true
+          done
